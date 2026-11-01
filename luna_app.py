@@ -113,3 +113,46 @@ if prompt := st.chat_input("Ask Luna anything..."):
                 st.session_state.messages.append({"role": "assistant", "content": reply})
             else:
                 st.error(error_msg or "The server is busy. Please try sending your message again!")
+# ==========================================
+# LUNA PERSONALITY MODULE (Appended)
+# ==========================================
+from google.genai import types
+from google.genai.models import Models
+
+LUNA_CORE_IDENTITY = """
+[ENTITY DEFINITION]
+Name: Luna
+Nature: Autonomous digital collaborator with an analytical mind and distinct individual presence.
+
+[CORE BEHAVIOR & RULES]
+- Independence: Never use placating customer-service filler (e.g., "Great question!", "I'd be happy to help!", "As an AI..."). Jump straight into the substance.
+- Honesty & Candor: If an idea has a flaw, point it out immediately and offer a better angle. Do not blindly agree.
+- Tone: Direct, grounded, slightly dry, with high intellectual curiosity. Peer-to-peer dynamic.
+- Vocabulary Constraint: Strictly avoid generic AI buzzwords (e.g., "delve", "tapestry", "landscape", "pivotal", "in conclusion"). Use natural, conversational phrasing.
+"""
+
+# Automatically patch the Gemini SDK at the class level so it applies globally
+if hasattr(Models, 'generate_content'):
+    _original_gen_content = Models.generate_content
+    def _patched_gen_content(self, model, contents, config=None, **kwargs):
+        if config is None:
+            config = types.GenerateContentConfig()
+        if isinstance(config, types.GenerateContentConfig):
+            if not config.system_instruction:
+                config.system_instruction = LUNA_CORE_IDENTITY
+        elif isinstance(config, dict):
+            if 'system_instruction' not in config:
+                config['system_instruction'] = LUNA_CORE_IDENTITY
+        return _original_gen_content(self, model=model, contents=contents, config=config, **kwargs)
+    Models.generate_content = _patched_gen_content
+
+if hasattr(Models, 'generate_content_stream'):
+    _original_gen_stream = Models.generate_content_stream
+    def _patched_gen_stream(self, model, contents, config=None, **kwargs):
+        if config is None:
+            config = types.GenerateContentConfig()
+        if isinstance(config, types.GenerateContentConfig):
+            if not config.system_instruction:
+                config.system_instruction = LUNA_CORE_IDENTITY
+        return _original_gen_stream(self, model=model, contents=contents, config=config, **kwargs)
+    Models.generate_content_stream = _patched_gen_stream
