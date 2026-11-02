@@ -6,7 +6,7 @@ from google.genai import types
 # Initialize Client
 client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 
-st.title("🌙 Luna AI")
+st.title("🌙 Luna AI (Agent Mode)")
 
 # Initialize Chat History
 if "messages" not in st.session_state:
@@ -24,10 +24,13 @@ if prompt := st.chat_input("Message Luna..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Luna is thinking..."):
+        with st.spinner("Luna is thinking and searching..."):
             reply = None
-            speed_config = types.GenerateContentConfig(
-                thinking_config=types.ThinkingConfig(thinking_level="low")
+            
+            # Agent Configuration: Turbo speed + Live Web Search Tool
+            agent_config = types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_level="low"),
+                tools=[types.Tool(google_search=types.GoogleSearch())]
             )
 
             # Automatic retry safety net for busy server errors
@@ -36,7 +39,7 @@ if prompt := st.chat_input("Message Luna..."):
                     response = client.models.generate_content(
                         model="gemini-3.8-flash",
                         contents=prompt,
-                        config=speed_config,
+                        config=agent_config,
                     )
                     reply = response.text
                     break  # It worked! Exit the retry loop.
@@ -50,5 +53,5 @@ if prompt := st.chat_input("Message Luna..."):
         st.session_state.messages.append({"role": "assistant", "content": reply})
 
 # ==============================================================================
-# --- UPGRADE ZONE (Add memory, web search, or personality modules below here) ---
+# --- UPGRADE ZONE (Add memory or personality modules below here) ---
 # ==============================================================================
