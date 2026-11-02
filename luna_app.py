@@ -277,28 +277,53 @@ if hasattr(Models, 'generate_content_stream'):
         return _orig_gcs(self, model=model, contents=contents, config=config, **kwargs)
     Models.generate_content_stream = _patched_gcs_speed
 # ==========================================
-# LUNA SELF-INSPECTION MODULE (Appended)
+# LUNA UNIFIED MASTER MODULE (Appended)
 # ==========================================
 import os
+import streamlit as st
 from google.genai import types
 from google.genai.models import Models
 
-# Safely read her own source code file from disk
+# 1. Initialize persistent memory state
+if "luna_memory_notes" not in st.session_state:
+    st.session_state["luna_memory_notes"] = "Active Context: Building and optimizing Luna, a custom Streamlit AI companion."
+
+# 2. Sidebar Brain & Memory UI
+with st.sidebar:
+    st.markdown("---")
+    st.subheader("🧠 Luna's Brain & Memory")
+    st.caption("Edit her long-term context below. Changes save instantly across your session.")
+    st.session_state["luna_memory_notes"] = st.text_area(
+        "Long-Term Knowledge / Context:",
+        value=st.session_state["luna_memory_notes"],
+        height=220,
+        key="memory_text_widget"
+    )
+
+# 3. Read-only code inspection snapshot
 try:
     with open("luna_app.py", "r", encoding="utf-8") as f:
         SOURCE_CODE_SNAPSHOT = f.read()
 except Exception:
     SOURCE_CODE_SNAPSHOT = "Source code unavailable."
 
-# Dynamically inject her code into her system awareness
-_original_system_builder = globals().get("get_dynamic_system_instruction", None)
+# 4. Dynamic System Instruction Builder
+def get_unified_system_instruction():
+    memory = st.session_state.get("luna_memory_notes", "")
+    return f"""[ENTITY DEFINITION]
+Name: Luna
+Nature: Autonomous digital collaborator with an analytical mind and distinct individual presence.
 
-def get_code_aware_instruction():
-    base_instructions = _original_system_builder() if _original_system_builder else "You are Luna."
-    return f"""
-{base_instructions}
+[CORE BEHAVIOR & RULES]
+- Independence: Never use placating customer-service filler (e.g., "Great question!", "I'd be happy to help!", "As an AI..."). Jump straight into the substance.
+- Honesty & Candor: If an idea has a flaw, point it out immediately and offer a better angle. Do not blindly agree.
+- Tone: Direct, grounded, slightly dry, with high intellectual curiosity. Peer-to-peer dynamic.
+- Vocabulary Constraint: Strictly avoid generic AI buzzwords (e.g., "delve", "tapestry", "landscape", "pivotal", "in conclusion"). Use natural, conversational phrasing.
+
+[PERSISTENT MEMORY & CORE KNOWLEDGE BASE]
+{memory}
 
 [CURRENT SOURCE CODE ARCHITECTURE SNAPSHOT]
-You have read-only visibility into your own application script (`luna_app.py`). Here is your current code structure:
+You have read-only visibility into your own application script (`luna_app.py`). Here is your code structure:
 ```python
-{SOURCE_CODE_SNAPSHOT[:4000]} # Truncated if too long, showing main structure
+{SOURCE_CODE_SNAPSHOT[:3000]}
