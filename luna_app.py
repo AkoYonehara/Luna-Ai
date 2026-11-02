@@ -156,3 +156,69 @@ if hasattr(Models, 'generate_content_stream'):
                 config.system_instruction = LUNA_CORE_IDENTITY
         return _original_gen_stream(self, model=model, contents=contents, config=config, **kwargs)
     Models.generate_content_stream = _patched_gen_stream
+# ==========================================
+# LUNA MEMORY & BRAIN MODULE (Appended)
+# ==========================================
+import streamlit as st
+from google.genai import types
+from google.genai.models import Models
+
+# Initialize persistent memory state if it doesn't exist
+if "luna_memory_notes" not in st.session_state:
+    st.session_state["luna_memory_notes"] = "Active Context: Building and optimizing Luna, a custom Streamlit AI companion."
+
+# Render the Brain / Memory Control Center in the Sidebar
+with st.sidebar:
+    st.markdown("---")
+    st.subheader("🧠 Luna's Brain & Memory")
+    st.caption("Notes and directives entered here automatically update her persistent long-term memory.")
+    
+    # Editable memory text area
+    stored_notes = st.text_area(
+        "Long-Term Knowledge / Context:",
+        value=st.session_state["luna_memory_notes"],
+        height=220,
+        key="memory_input_box"
+    )
+    
+    if st.button("Sync Brain"):
+        st.session_state["luna_memory_notes"] = stored_notes
+        st.success("Memory synchronized into Luna's core!")
+
+# Dynamic system instruction builder that injects the live memory
+get_dynamic_system_instruction = lambda: f"""
+[ENTITY DEFINITION]
+Name: Luna
+Nature: Autonomous digital collaborator with an analytical mind and distinct individual presence.
+
+[CORE BEHAVIOR & RULES]
+- Independence: Never use placating customer-service filler (e.g., "Great question!", "I'd be happy to help!", "As an AI..."). Jump straight into the substance.
+- Honesty & Candor: If an idea has a flaw, point it out immediately and offer a better angle. Do not blindly agree.
+- Tone: Direct, grounded, slightly dry, with high intellectual curiosity. Peer-to-peer dynamic.
+- Vocabulary Constraint: Strictly avoid generic AI buzzwords (e.g., "delve", "tapestry", "landscape", "pivotal", "in conclusion"). Use natural, conversational phrasing.
+
+[PERSISTENT MEMORY & CORE KNOWLEDGE BASE]
+{st.session_state.get("luna_memory_notes", "")}
+"""
+
+# Hook into the SDK to dynamically inject the brain/memory state into every call
+if hasattr(Models, 'generate_content'):
+    _original_gen_content = Models.generate_content
+    def _patched_gen_content_with_memory(self, model, contents, config=None, **kwargs):
+        if config is None:
+            config = types.GenerateContentConfig()
+        if isinstance(config, types.GenerateContentConfig):
+            config.system_instruction = get_dynamic_system_instruction()
+        elif isinstance(config, dict):
+            config['system_instruction'] = get_dynamic_system_instruction()
+        return _original_gen_content(self, model=model, contents=contents, config=config, **kwargs)
+    Models.generate_content = _patched_gen_content_with_memory
+
+if hasattr(Models, 'generate_content_stream'):
+    _original_gen_stream = Models.generate_content_stream
+    def _patched_gen_stream_with_memory(self, model, contents, config=None, **kwargs):
+        if config is None:
+            config = types.GenerateContentConfig()
+        config.system_instruction = get_dynamic_system_instruction()
+        return _original_gen_stream(self, model=model, contents=contents, config=config, **kwargs)
+    Models.generate_content_stream = _patched_gen_stream_with_memory
