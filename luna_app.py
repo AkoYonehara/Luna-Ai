@@ -1,24 +1,25 @@
 import os
-import json
 import time
 import streamlit as st
 from google import genai
 from google.genai import types
-from google.genai.models import Models
 
 # ==========================================
 # 1. CONFIGURATION & CLIENT INITIALIZATION
 # ==========================================
 API_KEY = st.secrets["GEMINI_API_KEY"]
 SPEED_MODEL = "gemini-2.5-flash"
-MEMORY_FILE = "luna_memory.json"
 
 client = genai.Client(api_key=API_KEY)
 
+# ==========================================
+# 2. APP UI & SIDEBAR BRAIN SETUP
+# ==========================================
+st.set_page_config(page_title="Luna AI", page_icon="🌙", layout="centered")
 
-# ==========================================
-# 2. MEMORY & BRAIN MODULE
-# ==========================================
+st.title("🌙 Luna AI Assistant")
+st.caption("Autonomous digital collaborator powered by Gemini.")
+
 if "luna_memory_notes" not in st.session_state:
     st.session_state["luna_memory_notes"] = "Active Context: Building and optimizing Luna, a custom Streamlit AI companion."
 
@@ -32,22 +33,16 @@ with st.sidebar:
         height=220
     )
 
-
 # ==========================================
-# 3. SELF-INSPECTION MODULE
+# 3. CODE INSPECTION & SYSTEM INSTRUCTION
 # ==========================================
 try:
     with open("luna_app.py", "r", encoding="utf-8") as f:
-        raw_code = f.read()[:3000]
-        SOURCE_CODE_SNAPSHOT = raw_code.replace("{", "{{").replace("}", "}}")
+        SOURCE_CODE_SNAPSHOT = f.read()[:3000]
 except Exception:
     SOURCE_CODE_SNAPSHOT = "Source code unavailable."
 
-
-# ==========================================
-# 4. DYNAMIC SYSTEM INSTRUCTION BUILDER
-# ==========================================
-def get_unified_system_instruction():
+def build_system_instruction():
     memory = st.session_state.get("luna_memory_notes", "")
     return (
         "[ENTITY DEFINITION]\n"
@@ -69,79 +64,32 @@ def get_unified_system_instruction():
         "- Restriction: You cannot modify this file yourself. Only the user can update the repository."
     )
 
-
 # ==========================================
-# 5. SDK MONKEY-PATCH MODULE (Speed, Web Search, Persona)
+# 4. NATIVE CHAT SESSION MANAGEMENT
 # ==========================================
-search_tool = types.Tool(google_search=types.GoogleSearch())
+# Initialize the official SDK chat session in session state if it doesn't exist
+if "chat_session" not in st.session_state:
+    config = types.GenerateContentConfig(
+        system_instruction=build_system_instruction(),
+        tools=[types.Tool(google_search=types.GoogleSearch())],
+        temperature=0.75
+    )
+    st.session_state.chat_session = client.chats.create(model=SPEED_MODEL, config=config)
 
-# Secure the TRUE original methods permanently on first boot to prevent recursion loops
-if not hasattr(Models, '_true_generate_content'):
-    Models._true_generate_content = Models.generate_content
-
-if not hasattr(Models, '_true_generate_content_stream'):
-    Models._true_generate_content_stream = Models.generate_content_stream
-
-def _patched_gc_unified(self, model, contents, config=None, **kwargs):
-    if not model or "pro" in str(model) or model == "gemini-3.8-flash":
-        model = SPEED_MODEL
-    if config is None:
-        config = types.GenerateContentConfig()
-        
-    if isinstance(config, types.GenerateContentConfig):
-        config.system_instruction = get_unified_system_instruction()
-        existing_tools = config.tools or []
-        if search_tool not in existing_tools:
-            config.tools = existing_tools + [search_tool]
-    elif isinstance(config, dict):
-        config['system_instruction'] = get_unified_system_instruction()
-        tools = config.get('tools', [])
-        if search_tool not in tools:
-            config['tools'] = tools + [search_tool]
-            
-    return Models._true_generate_content(self, model=model, contents=contents, config=config, **kwargs)
-
-def _patched_gcs_unified(self, model, contents, config=None, **kwargs):
-    if not model or "pro" in str(model) or model == "gemini-3.8-flash":
-        model = SPEED_MODEL
-    if config is None:
-        config = types.GenerateContentConfig()
-        
-    if isinstance(config, types.GenerateContentConfig):
-        config.system_instruction = get_unified_system_instruction()
-        existing_tools = config.tools or []
-        if search_tool not in existing_tools:
-            config.tools = existing_tools + [search_tool]
-    elif isinstance(config, dict):
-        config['system_instruction'] = get_unified_system_instruction()
-        tools = config.get('tools', [])
-        if search_tool not in tools:
-            config['tools'] = tools + [search_tool]
-            
-    return Models._true_generate_content_stream(self, model=model, contents=contents, config=config, **kwargs)
-
-Models.generate_content = _patched_gc_unified
-Models.generate_content_stream = _patched_gcs_unified
-
-
-# ==========================================
-# 6. APP UI & CHAT INTERFACE
-# ==========================================
-st.set_page_config(page_title="Luna AI", page_icon="🌙", layout="centered")
-
-st.title("🌙 Luna AI Assistant")
-st.caption("Autonomous digital collaborator powered by Gemini.")
-
+# Alternatively, keep a standard UI message list for rendering history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display conversation history
+# Display chat history from UI state
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Handle user chat input
+# ==========================================
+# 5. CHAT INPUT & EXECUTION
+# ==========================================
 if prompt := st.chat_input("Ask Luna anything..."):
+    # Append user message to UI
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -151,13 +99,12 @@ if prompt := st.chat_input("Ask Luna anything..."):
             response = None
             error_msg = None
             
-            # Retry loop for resilience against server busy errors
+            # Dynamically update system instruction config on the fly if memory changed
+            # (Note: client.chats maintains history natively)
             for attempt in range(3):
                 try:
-                    response = client.models.generate_content(
-                        model=SPEED_MODEL,
-                        contents=prompt
-                    )
+                    # Send message through the native SDK chat session
+                    response = st.session_state.chat_session.send_message(prompt)
                     break
                 except Exception as e:
                     if "503" in str(e) and attempt < 2:
