@@ -1,5 +1,6 @@
 import streamlit as st
 from google import genai
+from google.genai import types
 
 # Initialize Client
 client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
@@ -24,9 +25,15 @@ if prompt := st.chat_input("Message Luna..."):
     with st.chat_message("assistant"):
         with st.spinner("Luna is thinking..."):
             try:
+                # Turbo switch: tells Luna to give you quick, fast answers
+                speed_config = types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(thinking_level="low")
+                )
+
                 response = client.models.generate_content(
                     model="gemini-3.8-flash",
-                    contents=prompt
+                    contents=prompt,
+                    config=speed_config
                 )
                 reply = response.text
             except Exception as e:
