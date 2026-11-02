@@ -254,7 +254,7 @@ if hasattr(Models, 'generate_content_stream'):
         return _base_gen_stream(self, model=model, contents=contents, config=config, **kwargs)
     Models.generate_content_stream = _patched_gen_stream_web
 # ==========================================
-# LUNA UNIFIED MASTER MODULE (Bulletproof)
+# LUNA UNIFIED MASTER MODULE (Fixed State)
 # ==========================================
 import os
 import streamlit as st
@@ -265,23 +265,21 @@ from google.genai.models import Models
 if "luna_memory_notes" not in st.session_state:
     st.session_state["luna_memory_notes"] = "Active Context: Building and optimizing Luna, a custom Streamlit AI companion."
 
-# 2. Sidebar Brain & Memory UI
+# 2. Sidebar Brain & Memory UI (Using direct session-state key binding)
 with st.sidebar:
     st.markdown("---")
     st.subheader("🧠 Luna's Brain & Memory")
     st.caption("Edit her long-term context below. Changes save instantly across your session.")
-    st.session_state["luna_memory_notes"] = st.text_area(
+    st.text_area(
         "Long-Term Knowledge / Context:",
-        value=st.session_state["luna_memory_notes"],
-        height=220,
-        key="memory_text_widget"
+        key="luna_memory_notes",
+        height=220
     )
 
 # 3. Read-only code inspection snapshot (safely escaped for f-strings)
 try:
     with open("luna_app.py", "r", encoding="utf-8") as f:
         raw_code = f.read()[:3000]
-        # Escape curly braces so Python f-strings don't crash reading source code
         SOURCE_CODE_SNAPSHOT = raw_code.replace("{", "{{").replace("}", "}}")
 except Exception:
     SOURCE_CODE_SNAPSHOT = "Source code unavailable."
