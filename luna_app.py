@@ -253,3 +253,52 @@ if hasattr(Models, 'generate_content_stream'):
         
         return _base_gen_stream(self, model=model, contents=contents, config=config, **kwargs)
     Models.generate_content_stream = _patched_gen_stream_web
+# ==========================================
+# LUNA SPEED BOOSTER MODULE (Appended)
+# ==========================================
+from google.genai.models import Models
+
+# Force ultra-fast flash routing for maximum throughput and low latency
+SPEED_MODEL = "gemini-3.8-flash"
+
+if hasattr(Models, 'generate_content'):
+    _orig_gc = Models.generate_content
+    def _patched_gc_speed(self, model, contents, config=None, **kwargs):
+        if not model or "pro" in str(model):
+            model = SPEED_MODEL
+        return _orig_gc(self, model=model, contents=contents, config=config, **kwargs)
+    Models.generate_content = _patched_gc_speed
+
+if hasattr(Models, 'generate_content_stream'):
+    _orig_gcs = Models.generate_content_stream
+    def _patched_gcs_speed(self, model, contents, config=None, **kwargs):
+        if not model or "pro" in str(model):
+            model = SPEED_MODEL
+        return _orig_gcs(self, model=model, contents=contents, config=config, **kwargs)
+    Models.generate_content_stream = _patched_gcs_speed
+# ==========================================
+# LUNA SELF-INSPECTION MODULE (Appended)
+# ==========================================
+import os
+from google.genai import types
+from google.genai.models import Models
+
+# Safely read her own source code file from disk
+try:
+    with open("luna_app.py", "r", encoding="utf-8") as f:
+        SOURCE_CODE_SNAPSHOT = f.read()
+except Exception:
+    SOURCE_CODE_SNAPSHOT = "Source code unavailable."
+
+# Dynamically inject her code into her system awareness
+_original_system_builder = globals().get("get_dynamic_system_instruction", None)
+
+def get_code_aware_instruction():
+    base_instructions = _original_system_builder() if _original_system_builder else "You are Luna."
+    return f"""
+{base_instructions}
+
+[CURRENT SOURCE CODE ARCHITECTURE SNAPSHOT]
+You have read-only visibility into your own application script (`luna_app.py`). Here is your current code structure:
+```python
+{SOURCE_CODE_SNAPSHOT[:4000]} # Truncated if too long, showing main structure
