@@ -157,13 +157,13 @@ if hasattr(Models, 'generate_content_stream'):
         return _original_gen_stream(self, model=model, contents=contents, config=config, **kwargs)
     Models.generate_content_stream = _patched_gen_stream
 # ==========================================
-# LUNA MEMORY & BRAIN MODULE (Appended)
+# LUNA MEMORY & BRAIN MODULE (Fixed State)
 # ==========================================
 import streamlit as st
 from google.genai import types
 from google.genai.models import Models
 
-# Initialize persistent memory state if it doesn't exist
+# Initialize persistent memory state if missing
 if "luna_memory_notes" not in st.session_state:
     st.session_state["luna_memory_notes"] = "Active Context: Building and optimizing Luna, a custom Streamlit AI companion."
 
@@ -171,19 +171,15 @@ if "luna_memory_notes" not in st.session_state:
 with st.sidebar:
     st.markdown("---")
     st.subheader("🧠 Luna's Brain & Memory")
-    st.caption("Notes and directives entered here automatically update her persistent long-term memory.")
+    st.caption("Edit her long-term context below. Changes save instantly across your session.")
     
-    # Editable memory text area
-    stored_notes = st.text_area(
+    # Persistent text area synced directly to session state
+    st.session_state["luna_memory_notes"] = st.text_area(
         "Long-Term Knowledge / Context:",
         value=st.session_state["luna_memory_notes"],
         height=220,
-        key="memory_input_box"
+        key="memory_text_widget"
     )
-    
-    if st.button("Sync Brain"):
-        st.session_state["luna_memory_notes"] = stored_notes
-        st.success("Memory synchronized into Luna's core!")
 
 # Dynamic system instruction builder that injects the live memory
 get_dynamic_system_instruction = lambda: f"""
