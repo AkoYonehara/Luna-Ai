@@ -22,14 +22,15 @@ if prompt := st.chat_input("Message Luna..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents=prompt
-            )
-            reply = response.text
-        except Exception as e:
-            reply = f"Error: {e}"
+        with st.spinner("Luna is thinking..."):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-3.8-flash",
+                    contents=prompt
+                )
+                reply = response.text
+            except Exception as e:
+                reply = f"Error: {e}"
             
         st.markdown(reply)
         st.session_state.messages.append({"role": "assistant", "content": reply})
