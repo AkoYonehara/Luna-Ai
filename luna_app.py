@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -24,21 +25,27 @@ if prompt := st.chat_input("Message Luna..."):
 
     with st.chat_message("assistant"):
         with st.spinner("Luna is thinking..."):
-            try:
-                # Turbo switch: tells Luna to give you quick, fast answers
-                speed_config = types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(thinking_level="low")
-                )
+            reply = None
+            speed_config = types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_level="low")
+            )
 
-                response = client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=prompt,
-                    config=speed_config
-                )
-                reply = response.text
-            except Exception as e:
-                reply = f"Error: {e}"
-            
+            # Automatic retry safety net for busy server errors
+            for attempt in range(3):
+                try:
+                    response = client.models.generate_content(
+                        model="gemini-3.8-flash",
+                        contents=prompt,
+                        config=speed_config,
+                    )
+                    reply = response.text
+                    break  # It worked! Exit the retry loop.
+                except Exception as e:
+                    if "503" in str(e) and attempt < 2:
+                        time.sleep(2)  # Wait 2 seconds and try again automatically
+                        continue
+                    reply = f"Error: {e}"
+
         st.markdown(reply)
         st.session_state.messages.append({"role": "assistant", "content": reply})
 
