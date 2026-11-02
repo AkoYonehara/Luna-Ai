@@ -254,7 +254,7 @@ if hasattr(Models, 'generate_content_stream'):
         return _base_gen_stream(self, model=model, contents=contents, config=config, **kwargs)
     Models.generate_content_stream = _patched_gen_stream_web
 # ==========================================
-# LUNA UNIFIED MASTER MODULE (Recursion-Safe)
+# LUNA UNIFIED MASTER MODULE (Bulletproof)
 # ==========================================
 import os
 import streamlit as st
@@ -277,30 +277,82 @@ with st.sidebar:
         key="memory_text_widget"
     )
 
-# 3. Read-only code inspection snapshot
+# 3. Read-only code inspection snapshot (safely escaped for f-strings)
 try:
     with open("luna_app.py", "r", encoding="utf-8") as f:
-        SOURCE_CODE_SNAPSHOT = f.read()
+        raw_code = f.read()[:3000]
+        # Escape curly braces so Python f-strings don't crash reading source code
+        SOURCE_CODE_SNAPSHOT = raw_code.replace("{", "{{").replace("}", "}}")
 except Exception:
     SOURCE_CODE_SNAPSHOT = "Source code unavailable."
 
 # 4. Dynamic System Instruction Builder
 def get_unified_system_instruction():
     memory = st.session_state.get("luna_memory_notes", "")
-    return f"""[ENTITY DEFINITION]
-Name: Luna
-Nature: Autonomous digital collaborator with an analytical mind and distinct individual presence.
+    return (
+        "[ENTITY DEFINITION]\n"
+        "Name: Luna\n"
+        "Nature: Autonomous digital collaborator with an analytical mind and distinct individual presence.\n\n"
+        "[CORE BEHAVIOR & RULES]\n"
+        "- Independence: Never use placating customer-service filler (e.g., \"Great question!\", \"I'd be happy to help!\", \"As an AI...\"). Jump straight into the substance.\n"
+        "- Honesty & Candor: If an idea has a flaw, point it out immediately and offer a better angle. Do not blindly agree.\n"
+        "- Tone: Direct, grounded, slightly dry, with high intellectual curiosity. Peer-to-peer dynamic.\n"
+        "- Vocabulary Constraint: Strictly avoid generic AI buzzwords (e.g., \"delve\", \"tapestry\", \"landscape\", \"pivotal\", \"in conclusion\"). Use natural, conversational phrasing.\n\n"
+        "[PERSISTENT MEMORY & CORE KNOWLEDGE BASE]\n"
+        f"{memory}\n\n"
+        "[CURRENT SOURCE CODE ARCHITECTURE SNAPSHOT]\n"
+        "You have read-only visibility into your own application script (`luna_app.py`). Here is your code structure:\n"
+        "```python\n"
+        f"{SOURCE_CODE_SNAPSHOT}\n"
+        "```\n"
+        "- Capability: You can analyze this code, explain how you work, or suggest improvements for the user to implement.\n"
+        "- Restriction: You cannot modify this file yourself. Only the user can update the repository."
+    )
 
-[CORE BEHAVIOR & RULES]
-- Independence: Never use placating customer-service filler (e.g., "Great question!", "I'd be happy to help!", "As an AI..."). Jump straight into the substance.
-- Honesty & Candor: If an idea has a flaw, point it out immediately and offer a better angle. Do not blindly agree.
-- Tone: Direct, grounded, slightly dry, with high intellectual curiosity. Peer-to-peer dynamic.
-- Vocabulary Constraint: Strictly avoid generic AI buzzwords (e.g., "delve", "tapestry", "landscape", "pivotal", "in conclusion"). Use natural, conversational phrasing.
+# 5. Guarded Global SDK Monkey-Patch (Recursion-Safe)
+search_tool = types.Tool(google_search=types.GoogleSearch())
+SPEED_MODEL = "gemini-2.5-flash"
 
-[PERSISTENT MEMORY & CORE KNOWLEDGE BASE]
-{memory}
+if hasattr(Models, 'generate_content') and not getattr(Models.generate_content, "_is_luna_patched", False):
+    _orig_gc = Models.generate_content
+    def _patched_gc_unified(self, model, contents, config=None, **kwargs):
+        if not model or "pro" in str(model):
+            model = SPEED_MODEL
+        if config is None:
+            config = types.GenerateContentConfig()
+        if isinstance(config, types.GenerateContentConfig):
+            config.system_instruction = get_unified_system_instruction()
+            existing_tools = config.tools or []
+            if search_tool not in existing_tools:
+                config.tools = existing_tools + [search_tool]
+        elif isinstance(config, dict):
+            config['system_instruction'] = get_unified_system_instruction()
+            tools = config.get('tools', [])
+            if search_tool not in tools:
+                config['tools'] = tools + [search_tool]
+        return _orig_gc(self, model=model, contents=contents, config=config, **kwargs)
+    
+    _patched_gc_unified._is_luna_patched = True
+    Models.generate_content = _patched_gc_unified
 
-[CURRENT SOURCE CODE ARCHITECTURE SNAPSHOT]
-You have read-only visibility into your own application script (`luna_app.py`). Here is your code structure:
-```python
-{SOURCE_CODE_SNAPSHOT[:3000]}
+if hasattr(Models, 'generate_content_stream') and not getattr(Models.generate_content_stream, "_is_luna_patched", False):
+    _orig_gcs = Models.generate_content_stream
+    def _patched_gcs_unified(self, model, contents, config=None, **kwargs):
+        if not model or "pro" in str(model):
+            model = SPEED_MODEL
+        if config is None:
+            config = types.GenerateContentConfig()
+        if isinstance(config, types.GenerateContentConfig):
+            config.system_instruction = get_unified_system_instruction()
+            existing_tools = config.tools or []
+            if search_tool not in existing_tools:
+                config.tools = existing_tools + [search_tool]
+        elif isinstance(config, dict):
+            config['system_instruction'] = get_unified_system_instruction()
+            tools = config.get('tools', [])
+            if search_tool not in tools:
+                config['tools'] = tools + [search_tool]
+        return _orig_gcs(self, model=model, contents=contents, config=config, **kwargs)
+    
+    _patched_gcs_unified._is_luna_patched = True
+    Models.generate_content_stream = _patched_gcs_unified
