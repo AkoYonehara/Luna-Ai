@@ -218,3 +218,38 @@ if hasattr(Models, 'generate_content_stream'):
         config.system_instruction = get_dynamic_system_instruction()
         return _original_gen_stream(self, model=model, contents=contents, config=config, **kwargs)
     Models.generate_content_stream = _patched_gen_stream_with_memory
+# ==========================================
+# LUNA LIVE WEB SEARCH MODULE (Appended)
+# ==========================================
+from google.genai import types
+from google.genai.models import Models
+
+# Add Google Search tool configuration
+search_tool = types.Tool(google_search=types.GoogleSearch())
+
+# Update the monkey-patch to include web grounding globally
+if hasattr(Models, 'generate_content'):
+    _base_gen_content = Models.generate_content
+    def _patched_gen_content_web(self, model, contents, config=None, **kwargs):
+        if config is None:
+            config = types.GenerateContentConfig()
+        
+        # Inject search tool
+        if isinstance(config, types.GenerateContentConfig):
+            existing_tools = config.tools or []
+            config.tools = existing_tools + [search_tool]
+            
+        return _base_gen_content(self, model=model, contents=contents, config=config, **kwargs)
+    Models.generate_content = _patched_gen_content_web
+
+if hasattr(Models, 'generate_content_stream'):
+    _base_gen_stream = Models.generate_content_stream
+    def _patched_gen_stream_web(self, model, contents, config=None, **kwargs):
+        if config is None:
+            config = types.GenerateContentConfig()
+            
+        existing_tools = config.tools or []
+        config.tools = existing_tools + [search_tool]
+        
+        return _base_gen_stream(self, model=model, contents=contents, config=config, **kwargs)
+    Models.generate_content_stream = _patched_gen_stream_web
