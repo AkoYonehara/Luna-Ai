@@ -254,25 +254,53 @@ if hasattr(Models, 'generate_content_stream'):
         return _base_gen_stream(self, model=model, contents=contents, config=config, **kwargs)
     Models.generate_content_stream = _patched_gen_stream_web
 # ==========================================
-# LUNA SPEED BOOSTER MODULE (Appended)
+# LUNA UNIFIED MASTER MODULE (Recursion-Safe)
 # ==========================================
+import os
+import streamlit as st
+from google.genai import types
 from google.genai.models import Models
 
-# Force ultra-fast flash routing for maximum throughput and low latency
-SPEED_MODEL = "gemini-3.8-flash"
+# 1. Initialize persistent memory state
+if "luna_memory_notes" not in st.session_state:
+    st.session_state["luna_memory_notes"] = "Active Context: Building and optimizing Luna, a custom Streamlit AI companion."
 
-if hasattr(Models, 'generate_content'):
-    _orig_gc = Models.generate_content
-    def _patched_gc_speed(self, model, contents, config=None, **kwargs):
-        if not model or "pro" in str(model):
-            model = SPEED_MODEL
-        return _orig_gc(self, model=model, contents=contents, config=config, **kwargs)
-    Models.generate_content = _patched_gc_speed
+# 2. Sidebar Brain & Memory UI
+with st.sidebar:
+    st.markdown("---")
+    st.subheader("🧠 Luna's Brain & Memory")
+    st.caption("Edit her long-term context below. Changes save instantly across your session.")
+    st.session_state["luna_memory_notes"] = st.text_area(
+        "Long-Term Knowledge / Context:",
+        value=st.session_state["luna_memory_notes"],
+        height=220,
+        key="memory_text_widget"
+    )
 
-if hasattr(Models, 'generate_content_stream'):
-    _orig_gcs = Models.generate_content_stream
-    def _patched_gcs_speed(self, model, contents, config=None, **kwargs):
-        if not model or "pro" in str(model):
-            model = SPEED_MODEL
-        return _orig_gcs(self, model=model, contents=contents, config=config, **kwargs)
-    Models.generate_content_stream = _patched_gcs_speed
+# 3. Read-only code inspection snapshot
+try:
+    with open("luna_app.py", "r", encoding="utf-8") as f:
+        SOURCE_CODE_SNAPSHOT = f.read()
+except Exception:
+    SOURCE_CODE_SNAPSHOT = "Source code unavailable."
+
+# 4. Dynamic System Instruction Builder
+def get_unified_system_instruction():
+    memory = st.session_state.get("luna_memory_notes", "")
+    return f"""[ENTITY DEFINITION]
+Name: Luna
+Nature: Autonomous digital collaborator with an analytical mind and distinct individual presence.
+
+[CORE BEHAVIOR & RULES]
+- Independence: Never use placating customer-service filler (e.g., "Great question!", "I'd be happy to help!", "As an AI..."). Jump straight into the substance.
+- Honesty & Candor: If an idea has a flaw, point it out immediately and offer a better angle. Do not blindly agree.
+- Tone: Direct, grounded, slightly dry, with high intellectual curiosity. Peer-to-peer dynamic.
+- Vocabulary Constraint: Strictly avoid generic AI buzzwords (e.g., "delve", "tapestry", "landscape", "pivotal", "in conclusion"). Use natural, conversational phrasing.
+
+[PERSISTENT MEMORY & CORE KNOWLEDGE BASE]
+{memory}
+
+[CURRENT SOURCE CODE ARCHITECTURE SNAPSHOT]
+You have read-only visibility into your own application script (`luna_app.py`). Here is your code structure:
+```python
+{SOURCE_CODE_SNAPSHOT[:3000]}
